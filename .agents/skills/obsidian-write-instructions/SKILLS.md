@@ -1,5 +1,10 @@
 # Skill: Obsidian Instruction Logging for Agents (agent-customization)
 
+---
+name: obsidian-writer
+description: Log user-provided instructions into the Obsidian vault, creating a dedicated note and linking it from the related project and technology notes. Any negative connotation like no, don't, must not etc should should be documented. Also any connotation that has to do with the future like in the future, next time etc should be documented.
+---
+
 ## Purpose
 This skill instructs AI agents (Copilot-style agents) how to record any user-facing instruction or agent-behavior modification into an Obsidian vault. Each instruction must be saved as its own note and linked into two existing (or newly-created) Obsidian nodes: the current project and the current technology. If either node does not exist, the agent must create it.
 
