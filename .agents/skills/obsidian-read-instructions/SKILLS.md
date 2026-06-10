@@ -1,88 +1,66 @@
 ---
 name: obsidian-reader
-description: Retrieve and apply active user-facing instructions and behavioral customizations stored in an Obsidian vault.
+description: Always load this skill. Retrieve all instructions relevant to the current project and technology in an Obsidian vault.
 ---
+
 ## Purpose
 This skill instructs AI agents how to retrieve and apply active user-facing instructions and behavioral customizations stored in an Obsidian vault. By reading these notes, the agent ensures it adheres to custom guidelines, constraints, and preferences defined for the current project and technology.
 
 ## When to run
 - *Initially (Once)*: At the very beginning of a new session or task to retrieve initial behavioral rules.
 - *MCP Tool Invocation Check*: Every time the agent is about to execute or interact with an MCP (Model Context Protocol) tool, to ensure no new, modified, or safety-critical instructions have been added since the start of the session.
-# Obsidian Reader Skill
 
-This skill enables the agent to query and extract information from the user's Obsidian vault (which is a local directory containing Markdown files).
+## Implementation / MCP integration
+- Use the project's MCP implementation at `src/mcp.ts` for all interactions with the Obsidian vault. Do not call external MCPs or ad-hoc fetchers.
+- When the agent reaches a step that requires reading Obsidian content, import or invoke the MCP entrypoint from `src/mcp.ts` and use its documented API to list, fetch, and parse vault notes.
+- The MCP call should include context describing the task (e.g., "load active instructions"), and should validate that any retrieved instructions are not stale before applying them.
 
-## When to use this skill
-- When the user asks to search, query, find, list, or read notes from their Obsidian vault.
-- When the user asks to find tasks, checklist items, or checkboxes (e.g., `- [ ]`) inside Obsidian notes.
-- When the user wants to list all tags or find notes containing a specific tag in their Obsidian vault.
+## How to Use the MCP
 
-## Setup Requirements
-To use this skill, the agent must know the path to the Obsidian vault. It can be provided:
-1. Via the `--vault <path>` CLI option to the query script.
-2. Via the environment variable `OBSIDIAN_VAULT_PATH`.
-3. If neither is specified, the script falls back to checking `~/Obsidian/Vault` as a default.
+Follow these steps to run and call the local Obsidian MCP implemented in `src/mcp.ts`:
 
-## Usage Guide
-The skill is executed by running the Python helper script located at `.agents/skills/obsidian-reader/scripts/query_obsidian.py`.
+- **Set the vault path:** Set `OBSIDIAN_VAULT_PATH` to your vault root (optional — defaults to `D:\\obsidian\\test`).
 
-### Available Commands
+- **Start the MCP server:** Run the MCP process so it exposes the registered tools over stdio transport. From the workspace root run:
 
-1. **List all notes:**
-   ```bash
-   python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action list
-   ```
-
-2. **Search notes by keywords:**
-   ```bash
-   python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action search --query "search term"
-   ```
-
-3. **Read the contents of a specific note:**
-   ```bash
-   python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action read --query "Note Name"
-   ```
-
-4. **Retrieve checklist tasks:**
-   - List all tasks:
-     ```bash
-     python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action tasks --status all
-     ```
-   - List incomplete tasks (todos) only:
-     ```bash
-     python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action tasks --status todo
-     ```
-   - List completed tasks only:
-     ```bash
-     python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action tasks --status done
-     ```
-
-5. **Manage and search tags:**
-   - List all tags in the vault (sorted by frequency):
-     ```bash
-     python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action tags
-     ```
-   - Find all notes tagged with `#project-a`:
-     ```bash
-     python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action tags --query "project-a"
-     ```
-
-6. **Retrieve project or technology notes and linked instructions:**
-   - Retrieve a specific project note and its associated instruction notes:
-     ```bash
-     python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action get --project "Project Name"
-     ```
-   - Retrieve a specific technology note and its associated instruction notes:
-     ```bash
-     python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action get --technology "Technology Name"
-     ```
-   - Retrieve both project and technology notes and their associated instruction notes simultaneously:
-     ```bash
-     python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action get --project "Project Name" --technology "Technology Name"
-     ```
-
-### Structured Data (JSON Output)
-You can append `--format json` to any command to receive structured JSON output, which is useful when programmatic parsing is required:
-```bash
-python3 .agents/skills/obsidian-reader/scripts/query_obsidian.py --vault <vault_path> --action tasks --status todo --format json
 ```
+node src/mcp.ts
+```
+
+- **Available tools:** The server exposes these tool names and behaviors:
+	- `list_notes` — returns an array of markdown file paths in the vault.
+	- `read_note` — accepts `{ path: string }` and returns the note contents.
+	- `write_note` — accepts `{ path: string, content: string }` to create/overwrite notes.
+	- `append_to_note` — accepts `{ path: string, content: string }` to append to a note.
+	- `search_notes` — accepts `{ query: string }` and returns match metadata and snippets.
+
+- **Calling the tools (example):** Use your MCP client (or the `@modelcontextprotocol` SDK) to connect to the server and call tools by name. Pseudocode:
+
+```
+// Pseudocode - adapt to your MCP client implementation
+const client = new McpClient();
+await client.connect(new StdioClientTransport(process.stdin, process.stdout));
+
+// list notes
+const listRes = await client.callTool('list_notes');
+
+// read a note
+const readRes = await client.callTool('read_note', { path: 'path/to/note.md' });
+
+// search notes
+const searchRes = await client.callTool('search_notes', { query: 'active instructions' });
+```
+
+- **Error handling:** Tools return an error shape with `isError: true` and a textual message on failure — always check for `isError` before consuming `content`.
+
+- **Security:** The MCP enforces vault path confinement; do not pass absolute paths that escape the vault. Use relative note paths (e.g., `folder/note.md`).
+
+Use these instructions whenever you need to load or update project-facing instructions from the Obsidian vault.
+
+## Example (informational)
+- Node/TS usage (conceptual): `const mcp = require('../../src/mcp.ts')` or `import mcp from '../../src/mcp.ts'` and then `mcp.fetchVaultNotes({path: 'obsidian'});`
+
+## Safety and precedence
+- When Obsidian-derived instructions conflict with higher-priority project policies or runtime safety checks, prefer enforced project policies. Always surface conflicts for human review.
+
+# Obsidian Reader Skill
