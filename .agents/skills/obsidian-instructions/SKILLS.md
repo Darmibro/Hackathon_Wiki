@@ -20,7 +20,7 @@ This skill instructs AI agents (Copilot-style agents) how to record any user-fac
 - If project or technology notes did not exist, newly created notes for them with minimal frontmatter and an index section linking the new instruction.
 
 ## Filename & Frontmatter conventions
-- Filename: `{YYYYMMDD_HHMMSS} - {project_slug} - {technology_slug} - instruction.md`
+- Filename: `{YYYYMMDD_HHMMSS} - instruction.md`
 - Frontmatter YAML (required):
   ---
   title: "Short title or first line of instruction"
@@ -40,9 +40,9 @@ This skill instructs AI agents (Copilot-style agents) how to record any user-fac
 1. Validate inputs. If `project` or `technology` missing, attempt to infer; if inference confidence < threshold, ask user.
 2. Normalize `project` and `technology` to simple slugs (lowercase, hyphens).
 3. Build filename and frontmatter as per convention.
-4. Save the new instruction note into vault under `Notes/Instructions/` (or a configured folder).
-5. Locate the project note: `Projects/{project}.md` (or a configured index). If not found, create it with frontmatter `{project, created, tags: [project]}` and a short description.
-6. Locate the technology note: `Technologies/{technology}.md` (or a configured index). If not found, create it with frontmatter `{technology, created, tags: [technology]}` and a short description.
+4. Save the new instruction note into vault under `Notes/Instructions/` (or a configured folder) using the obsidian mcp.
+5. Locate the project node: `Projects/{project}.md` (or a configured index). If not found, create it with frontmatter `{project, created, tags: [project]}` and a short description.
+6. Locate the technology node: `Technologies/{technology}.md` (or a configured index). If not found, create it with frontmatter `{technology, created, tags: [technology]}` and a short description.
 7. In both the project note and the technology note, add a link section (e.g., "Instructions") and insert a wiki-link to the newly-created instruction note `[[{filename_without_ext}]]`.
 8. Append a one-line entry to each index: `- [[{instruction_note}]] — {short summary} ({created})`.
 9. Return a success message summarizing created files and inserted links.
