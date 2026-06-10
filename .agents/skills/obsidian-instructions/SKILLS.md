@@ -68,6 +68,8 @@ This skill instructs AI agents (Copilot-style agents) how to record any user-fac
 ## Example prompts for the agent
 - "Document this instruction: Always run tests before merging into `project-x` using `Jenkins`. Vault: /path/to/vault."
 - "Save the user override that agents should format Jira tickets as 'TYPE: short summary' under project 'MarketApp' and technology 'Jira'."
+- "No. What I meant was..."
+- "This isn't what I meant..."
 
 ## Example produced notes (short)
 - Instruction note frontmatter and content as described above.
